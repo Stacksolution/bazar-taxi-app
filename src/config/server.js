@@ -1,6 +1,7 @@
 'use strict';
 
 const http     = require('http');
+const path     = require('path');
 const express  = require('express');
 const cors     = require('cors');
 const helmet   = require('helmet');
@@ -16,7 +17,20 @@ function createServer() {
   const app = express();
 
   // ── Security headers ──────────────────────────────
-  app.use(helmet());
+  // The chat test page uses the Tailwind CDN during local development.
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // The local test page intentionally contains small inline scripts
+        // (Tailwind config + the test harness). This page is a dev tool only.
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
+    },
+  }));
 
   // ── CORS ──────────────────────────────────────────
   app.use(cors({
@@ -28,6 +42,13 @@ function createServer() {
   // ── Body parsing ──────────────────────────────────
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // Local browser-based Socket.IO chat tester.
+  app.use(express.static(path.join(__dirname, '../../public')));
+  app.get('/chat-test', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../../public/test-chat-client.html'));
+  });
+  app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
   // ── HTTP request logging ──────────────────────────
   app.use(
