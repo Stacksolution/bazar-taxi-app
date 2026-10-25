@@ -1,6 +1,7 @@
 'use strict';
 
 const ChatModel = require('../models/ChatModel');
+const UserModel = require('../models/UserModel');
 
 /**
  * Booking chat business rules.
@@ -71,12 +72,19 @@ const ChatService = {
    */
   async getParticipants({ roomId, userId }) {
     const { room } = await this.assertRoomAccess({ roomId, userId });
-    const participants = await ChatModel.getRoomParticipants(room.id);
-    return participants.map((participant) => ({
-      userId: participant.participant_user_id,
-      joinedAt: participant.joined_at,
-      isOwner: participant.participant_user_id === room.room_owner_id,
-    }));
+    const participantRows = await ChatModel.getRoomParticipants(room.id);
+    const users = await UserModel.findByIds(participantRows.map((participant) => participant.participant_user_id));
+    const usersById = new Map(users.map((user) => [Number(user.id), user]));
+
+    return participantRows.map((participant) => {
+      const participantUserId = Number(participant.participant_user_id);
+      return {
+        userId: participantUserId,
+        name: usersById.get(participantUserId)?.name || null,
+        joinedAt: participant.joined_at,
+        isOwner: participantUserId === room.room_owner_id,
+      };
+    });
   },
 
   /**

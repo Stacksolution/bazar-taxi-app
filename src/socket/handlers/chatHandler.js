@@ -9,6 +9,27 @@ const EV = SOCKET_EVENTS.CHAT;
 const ioRoom = (roomId) => `chat_room:${roomId}`;
 const ack = (callback, payload) => { if (typeof callback === 'function') callback(payload); };
 
+function addLiveSocketDetails(participants, io) {
+  const socketIdsByUser = new Map();
+  for (const client of io.sockets.sockets.values()) {
+    const userId = Number(client.data.userId);
+    if (!userId) continue;
+    const socketIds = socketIdsByUser.get(userId) || [];
+    socketIds.push(client.id);
+    socketIdsByUser.set(userId, socketIds);
+  }
+
+  return participants.map((participant) => {
+    const socketIds = socketIdsByUser.get(Number(participant.userId)) || [];
+    return {
+      ...participant,
+      socketId: socketIds[0] || null,
+      socketIds,
+      isOnline: socketIds.length > 0,
+    };
+  });
+}
+
 /** A message is visible to the owner or to the participant conversation ID. */
 function canReceiveMessage(socket, room, message) {
   return room.room_owner_id === socket.data.userId ||
@@ -53,17 +74,18 @@ function registerChatHandlers(socket, io) {
         roomId: result.room.id,
         userId,
       });
+      const participantsWithSocketDetails = addLiveSocketDetails(participants, io);
       socket.to(ioRoom(result.room.id)).emit(EV.ROOM_JOINED, {
         room: result.room,
         joinedBy: { userId },
-        participant: result.participant,
+        participant: participantsWithSocketDetails.find((participant) => participant.userId === userId),
       });
       // Broadcast the complete list so every open client updates immediately.
       io.to(ioRoom(result.room.id)).emit(EV.PARTICIPANTS_LIST, {
         roomId: result.room.id,
-        participants,
+        participants: participantsWithSocketDetails,
       });
-      ack(callback, success({ room: result.room, history, participants, isOwner: result.isOwner }, 'Room joined'));
+      ack(callback, success({ room: result.room, history, participants: participantsWithSocketDetails, isOwner: result.isOwner }, 'Room joined'));
     } catch (err) {
       logger.error(`[JOIN_ROOM] ${err.message}`);
       ack(callback, failure(err.message));
@@ -74,7 +96,7 @@ function registerChatHandlers(socket, io) {
   socket.on(EV.GET_PARTICIPANTS, async (data = {}, callback) => {
     try {
       const participants = await ChatService.getParticipants({ roomId: Number(data.roomId), userId });
-      ack(callback, success(participants, 'Participants fetched'));
+      ack(callback, success(addLiveSocketDetails(participants, io), 'Participants fetched'));
     } catch (err) { ack(callback, failure(err.message)); }
   });
 

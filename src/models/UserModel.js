@@ -30,6 +30,15 @@ const UserModel = {
     );
   },
 
+  findByIds(ids) {
+    if (!ids.length) return Promise.resolve([]);
+    const placeholders = ids.map(() => '?').join(', ');
+    return query(
+      `SELECT id, name FROM users WHERE id IN (${placeholders})`,
+      ids
+    );
+  },
+
   /**
    * Find by email (includes password for auth).
    * @param {string} email

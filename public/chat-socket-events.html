@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bazar Taxi Socket.IO chat events: request payloads, acknowledgements, and server broadcasts.">
+  <title>Chat Socket Events | Bazar Taxi</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172b2a;
+      --muted: #526563;
+      --line: #d6e0dc;
+      --paper: #f7f8f4;
+      --panel: #fff;
+      --green: #176c55;
+      --green-pale: #e5f2eb;
+      --amber: #a65313;
+      --amber-pale: #fff1dc;
+      --code: #142622;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.65 "Segoe UI", "Nirmala UI", sans-serif;
+    }
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      background: #e8f0e9;
+      padding: 36px 24px 30px;
+    }
+    .topbar-inner, main { width: min(100% - 40px, 1040px); margin: 0 auto; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
+    h1 { margin: 6px 0 4px; font-size: clamp(28px, 5vw, 42px); line-height: 1.15; }
+    h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.25; }
+    h3 { margin: 24px 0 8px; font-size: 18px; }
+    p { margin: 8px 0 14px; }
+    .subtitle { max-width: 760px; color: var(--muted); margin: 10px 0 0; }
+    main { padding: 26px 0 64px; }
+    section { padding: 24px 0; border-bottom: 1px solid var(--line); }
+    .intro-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 4px; }
+    .note { padding: 13px 15px; border-left: 3px solid var(--green); background: var(--green-pale); }
+    .warning { padding: 13px 15px; border-left: 3px solid var(--amber); background: var(--amber-pale); }
+    .note strong, .warning strong { display: block; margin-bottom: 3px; }
+    code { color: #124e3e; font: 0.92em Consolas, "Courier New", monospace; }
+    pre {
+      overflow-x: auto;
+      margin: 10px 0 16px;
+      padding: 16px;
+      border: 1px solid #28443b;
+      border-radius: 5px;
+      background: var(--code);
+      color: #eff8f2;
+      font: 13px/1.6 Consolas, "Courier New", monospace;
+      tab-size: 2;
+    }
+    pre code { color: inherit; }
+    .event { margin-top: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); }
+    .event h3 { margin-top: 0; }
+    .tag { display: inline-block; margin: 0 0 10px 8px; padding: 1px 7px; border-radius: 3px; background: var(--green-pale); color: var(--green); font-size: 11px; font-weight: 800; vertical-align: 2px; }
+    .tag.server { background: #e8edf2; color: #334c61; }
+    .tag.unavailable { background: var(--amber-pale); color: var(--amber); }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; background: var(--panel); }
+    th, td { padding: 10px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #e8f0e9; font-size: 14px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 14px; }
+    ul, ol { padding-left: 22px; }
+    li { margin: 4px 0; }
+    footer { padding-top: 22px; color: var(--muted); font-size: 13px; }
+    @media (max-width: 640px) {
+      .topbar { padding: 28px 20px 24px; }
+      .topbar-inner, main { width: min(100% - 28px, 1040px); }
+      .intro-grid { grid-template-columns: 1fr; }
+      section { padding: 20px 0; }
+      .event { padding: 14px; }
+      th, td { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="eyebrow">Bazar Taxi · Developer Reference</div>
+      <h1>Chat Socket Events</h1>
+      <p class="subtitle">Socket.IO chat ke har implemented event ka naam, client payload, acknowledgement response aur server broadcast yahan diya gaya hai.</p>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Shuru karne se pehle</h2>
+      <div class="intro-grid">
+        <div class="note"><strong>Identity server se aati hai</strong>Chat handlers user ID ko authenticated socket se lete hain. Chat payload mein apna <code>userId</code> ya role bhejne ki zaroorat nahi.</div>
+        <div class="note"><strong>Room pehle se hona chahiye</strong><code>chat:join_room</code> room create nahi karta. Booking flow ko server-side <code>ChatService.createRoom()</code> se room pehle banana hai.</div>
+      </div>
+      <h3>Socket connect</h3>
+      <p>Server handshake query mein <code>user_type</code>, <code>user_id</code>, aur <code>guest_id</code> validate karta hai. Chat ke liye guest connection kaam nahi karega, kyunki guest ka authenticated numeric <code>userId</code> null hota hai.</p>
+      <pre><code>import { io } from 'socket.io-client';
+
+const socket = io(SERVER_URL, {
+  query: {
+    user_id: String(currentUser.id),
+    user_type: currentUser.role, // customer, driver, ya admin
+    guest_id: '0'
+  }
+});</code></pre>
+      <p class="small muted">Server <code>customer</code>, <code>driver</code>, aur <code>admin</code> user types allow karta hai. Chat authorization room owner/participant membership aur numeric user ID se hoti hai.</p>
+      <h3>Acknowledgement format</h3>
+      <pre><code>// Success
+{ "success": true, "message": "...", "data": { } }
+
+// Failure
+{ "success": false, "message": "...", "errors": null, "code": 500 }</code></pre>
+      <p class="small">Acknowledgement sirf un client events par aata hai jinke example mein callback diya gaya hai. `typing_start` aur `typing_stop` acknowledgement nahi dete.</p>
+    </section>
+
+    <section>
+      <h2>Room events</h2>
+
+      <article class="event">
+        <h3><code>chat:join_room</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Existing booking room join karein. <code>bookingId</code> ya <code>roomId</code> mein se ek bhejein; user identity socket auth se li jaati hai.</p>
+        <pre><code>socket.emit('chat:join_room', { bookingId: 12345 }, (response) => {
+  if (!response.success) return showError(response.message);
+  const { room, history, participants, isOwner } = response.data;
+  openChat(room.id, history);
+});</code></pre>
+        <p><strong>Success data:</strong> <code>{ room, history, participants, isOwner }</code>. Owner ko sab conversations ki history dikhti hai; participant ko sirf apni owner conversation ki.</p>
+        <p><strong>Validation:</strong> Dono IDs na bhejne par <code>bookingId is required</code>. Room missing/closed ya access-related service error par ack mein <code>success: false</code>.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:get_order_rooms</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Booking ka room fetch karein. Is handler mein <code>joinRoom()</code> call hota hai, isliye non-owner user participant ke roop mein add/reactivate ho sakta hai. Yeh socket ko Socket.IO room mein join nahi karta.</p>
+        <pre><code>socket.emit('chat:get_order_rooms', { bookingId: 12345 }, (response) => {
+  if (!response.success) return showError(response.message);
+  const rooms = response.data; // array, aam taur par ek room
+});</code></pre>
+        <p><code>orderId</code> bhi backend accept karta hai, lekin naye client code mein <code>bookingId</code> use karein. Success message <code>Booking room fetched</code>.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:leave_room</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Current socket ko chat broadcast room se remove karein.</p>
+        <pre><code>socket.emit('chat:leave_room', { roomId: 10 }, (response) => {
+  // { success: true, message: 'Left room', data: null }
+});</code></pre>
+        <p>Isse database participant membership delete nahi hoti. <code>roomId</code> missing ho tab bhi handler success ack bhejta hai.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:get_participants</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Room ke active participants ki current list lein. User ko room ka owner ya active participant hona chahiye.</p>
+        <pre><code>socket.emit('chat:get_participants', { roomId: 10 }, (response) => {
+  if (response.success) renderParticipants(response.data);
+});</code></pre>
+        <p><strong>Data:</strong> participant objects ka array. Har object mein <code>userId</code>, <code>name</code>, <code>joinedAt</code>, <code>isOwner</code>, <code>socketId</code>, <code>socketIds</code>, aur <code>isOnline</code> hain.</p>
+        <pre><code>{
+        "userId": 8,
+        "name": "Aman Khan",
+        "joinedAt": "2026-10-21T10:02:00.000Z",
+        "isOwner": false,
+        "socketId": "abc123-current-socket",
+        "socketIds": ["abc123-current-socket", "xyz789-another-device"],
+        "isOnline": true
+      }</code></pre>
+        <p><code>socketIds</code> us user ke sabhi currently connected Socket.IO connections hain. <code>socketId</code> compatibility ke liye pehla active socket ID hai, warna <code>null</code>. <code>isOnline</code> live connection list se calculate hota hai.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:room_joined</code><span class="tag server">Server → Room</span></h3>
+        <p>Koi user room join kare to pehle se room mein maujood sockets ko emit hota hai. Join karne wale socket ko yeh event nahi milta.</p>
+        <pre><code>{
+  "room": { "id": 10, "room_booking_id": 12345, "room_owner_id": 4 },
+  "joinedBy": { "userId": 8 },
+  "participant": { "participant_user_id": 8 }
+}</code></pre>
+        <p>Join karne wale client ko room, history aur participants `chat:join_room` ack mein milte hain.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:participants_list</code><span class="tag server">Server → Room</span></h3>
+        <p>Har successful <code>chat:join_room</code> ke baad sab room sockets ko latest participant list broadcast hoti hai, joining socket samet.</p>
+        <pre><code>{
+  "roomId": 10,
+  "participants": [
+    {
+      "userId": 4,
+      "name": "Sara Ali",
+      "joinedAt": "2026-10-21T10:00:00.000Z",
+      "isOwner": true,
+      "socketId": "owner-socket-id",
+      "socketIds": ["owner-socket-id"],
+      "isOnline": true
+    },
+    {
+      "userId": 8,
+      "name": "Aman Khan",
+      "joinedAt": "2026-10-21T10:02:00.000Z",
+      "isOwner": false,
+      "socketId": null,
+      "socketIds": [],
+      "isOnline": false
+    }
+  ]
+}</code></pre>
+      </article>
+    </section>
+
+    <section>
+      <h2>Messages</h2>
+      <article class="event">
+        <h3><code>chat:send_message</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Text ya attachment message save karke authorized conversation clients ko bhejein. Room join/access valid hona chahiye.</p>
+        <h3>Participant se owner ko</h3>
+        <pre><code>socket.emit('chat:send_message', {
+  roomId: 10,
+  message: 'Pickup point par pahunch gaya hoon.',
+  messageType: 'text'
+}, (response) => {
+  if (response.success) console.log(response.data.id);
+});</code></pre>
+        <h3>Owner se specific participant ko</h3>
+        <pre><code>socket.emit('chat:send_message', {
+  roomId: 10,
+  toUserId: 8,
+  message: 'Gate par milte hain.',
+  messageType: 'text'
+}, callback);</code></pre>
+        <p>Owner ke message mein <code>toUserId</code> required hai aur woh room ka active participant hona chahiye. Participant ke liye target automatically room owner hota hai.</p>
+        <h3>Attachment</h3>
+        <pre><code>socket.emit('chat:send_message', {
+  roomId: 10,
+  message: null,
+  messageType: 'image',
+  attachmentUrl: 'https://cdn.example.com/photo.jpg'
+}, callback);</code></pre>
+        <p><code>messageType</code> omit karne par database default <code>text</code> hai; <code>attachmentUrl</code> omit karne par null hota hai. <code>roomId</code> aur <code>message</code> ya <code>attachmentUrl</code> required hain.</p>
+        <p><strong>Ack data:</strong> database se saved message row (<code>response.data</code>), success message <code>Message sent</code>.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:new_message</code><span class="tag server">Server → Authorized Clients</span></h3>
+        <p>Message save hone ke baad relevant conversation ke clients ko <code>success/message/data</code> envelope mein emit hota hai.</p>
+        <pre><code>{
+  "success": true,
+  "message": "New message",
+  "data": {
+    "id": 501,
+    "chat_room_id": 10,
+    "chat_sender_id": 8,
+    "chat_conversation_user_id": 4,
+    "chat_message": "Pickup point par pahunch gaya hoon.",
+    "chat_message_type": "text",
+    "chat_attachment_url": null,
+    "chat_message_status": "sent",
+    "created_at": "2026-10-21T10:00:00.000Z"
+  }
+}</code></pre>
+        <p>Owner ko apne room ke sab conversation messages milte hain. Participant ko sirf apni owner conversation ke messages milte hain; doosre participants ko nahi.</p>
+      </article>
+
+      <article class="event">
+        <h3><code>chat:get_room_history</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Room history page-wise fetch karein. Default page <code>1</code>, default page size <code>50</code>; response oldest-to-newest order mein hota hai.</p>
+        <pre><code>socket.emit('chat:get_room_history', { roomId: 10, page: 1 }, (response) => {
+  if (response.success) renderMessages(response.data);
+});</code></pre>
+        <p><strong>Data:</strong> message rows ka array. Access check hota hai. Owner ko sab threads ki history; participant ko sirf apni thread ki history.</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Typing aur read receipts</h2>
+      <article class="event">
+        <h3><code>chat:typing_start</code> / <code>chat:typing_stop</code><span class="tag">Client → Server</span></h3>
+        <p>Typing state notify karein. Dono events payload mein <code>roomId</code> lete hain; callback/ack nahi hai.</p>
+        <pre><code>socket.emit('chat:typing_start', { roomId: 10 });
+socket.emit('chat:typing_stop', { roomId: 10 });</code></pre>
+        <p>Room access valid ho to sender ke alawa room ke clients ko <code>chat:user_typing</code> milta hai. Invalid room/access errors silently ignore hote hain.</p>
+      </article>
+      <article class="event">
+        <h3><code>chat:user_typing</code><span class="tag server">Server → Room</span></h3>
+        <pre><code>{ "roomId": 10, "userId": 8, "isTyping": true }</code></pre>
+        <p><code>isTyping</code> start par <code>true</code>, stop par <code>false</code>. Yeh event <code>success/data</code> envelope mein nahi hota.</p>
+      </article>
+      <article class="event">
+        <h3><code>chat:mark_read</code><span class="tag">Client → Server · Ack</span></h3>
+        <p>Current user ki visible conversation mein doosre user ke unread messages ko read mark karein.</p>
+        <pre><code>socket.emit('chat:mark_read', { roomId: 10 }, (response) => {
+  if (response.success) console.log(response.data.markedCount);
+});</code></pre>
+        <p><strong>Ack data:</strong> <code>{ markedCount: number }</code>. Naye messages mark hue hon tabhi read broadcast emit hota hai.</p>
+      </article>
+      <article class="event">
+        <h3><code>chat:message_read</code><span class="tag server">Server → Room</span></h3>
+        <pre><code>{
+  "roomId": 10,
+  "messageIds": [501, 502],
+  "readBy": { "userId": 4 },
+  "readAt": "2026-10-21T10:05:00.000Z"
+}</code></pre>
+        <p>Raw object broadcast hota hai, response envelope nahi. <code>readAt</code> ISO timestamp hai.</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Registry mein listed, abhi emit nahi hote</h2>
+      <div class="warning"><strong>Client listener par abhi depend na karein</strong>Event registry mein naam hona is baat ka proof nahi ki current handler usse emit karta hai.</div>
+      <table>
+        <thead><tr><th>Event</th><th>Current status</th><th>Available behavior</th></tr></thead>
+        <tbody>
+          <tr><td><code>chat:message_delivered</code></td><td><span class="tag unavailable">Not emitted</span></td><td>Registry mein declared hai; chat handler mein delivery receipt emit nahi hota. Model mein <code>markDelivered()</code> helper hai, lekin is flow se wired nahi.</td></tr>
+          <tr><td><code>chat:order_rooms_list</code></td><td><span class="tag unavailable">Not emitted</span></td><td>Registry mein declared hai; current <code>chat:get_order_rooms</code> response acknowledgement se milta hai.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Recommended client flow</h2>
+      <ol>
+        <li>Booking create hone par trusted server flow se booking ka chat room create karein.</li>
+        <li>Client authenticated socket connect karke <code>chat:join_room</code> emit kare.</li>
+        <li>Join acknowledgement se <code>room.id</code>, history aur participants store karein; <code>chat:new_message</code> listener connection ke baad register rakhein.</li>
+        <li>Participant message bhejte waqt <code>roomId</code> bheje; owner message mein <code>toUserId</code> bhi de.</li>
+        <li>Chat visible hone par <code>chat:mark_read</code> call karein; screen close par <code>chat:leave_room</code> emit karein.</li>
+      </ol>
+      <h3>IDs ka matlab</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Meaning</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>bookingId</code></td><td>Business booking ID</td><td>Existing booking room lookup/join.</td></tr>
+          <tr><td><code>roomId</code></td><td>Chat room database ID</td><td>Message, history, participants, typing, read aur leave events.</td></tr>
+          <tr><td><code>toUserId</code></td><td>Target participant numeric user ID</td><td>Owner ke outgoing message mein required; participant ke liye nahi.</td></tr>
+          <tr><td><code>userId</code></td><td>Authenticated numeric account ID</td><td>Socket auth se server nikalta hai; chat event payload mein bhejne ki zaroorat nahi.</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <footer>Reference current implementation: <code>src/socket/handlers/chatHandler.js</code>, <code>src/services/ChatService.js</code>, aur <code>src/utils/response.js</code>.</footer>
+  </main>
+</body>
+</html>
