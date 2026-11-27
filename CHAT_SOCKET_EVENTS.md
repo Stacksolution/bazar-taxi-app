@@ -158,7 +158,47 @@ Visibility:
 - Participant को केवल उसी participant-owner conversation के messages मिलेंगे।
 - दूसरे participant को message event नहीं मिलेगा।
 
-## 4. `chat:typing_start` — typing शुरू
+## 4. Message status: `sent` → `delivered` → `read`
+
+हर message का status database की `chat_message_status` field में रहता है:
+
+| Status | कब set होता है | Client को क्या करना है |
+|---|---|---|
+| `sent` | Message database में save हो गया, लेकिन target user का कोई active socket नहीं है। | Pending/sent tick दिखाएँ। |
+| `delivered` | Target user का authenticated Socket.IO connection online मिला। Server automatically status update करता है। | `chat:new_message` या `chat:message_delivered` से status update करें। |
+| `read` | Target user chat खोलकर/visible messages के लिए `chat:mark_read` भेजता है। | `chat:message_read` के `messageIds` को `read` करें। |
+
+`chat:new_message` target user के personal socket पर भी भेजा जाता है, इसलिए target user ने room join न किया हो तब भी online delivery काम करेगी। Offline user के लिए message पहले `sent` रहेगा; target user के reconnect होते ही server pending messages को `delivered` करके उन्हें personal socket पर replay करता है।
+
+### Delivery event: `chat:message_delivered`
+
+```js
+socket.on('chat:message_delivered', (event) => {
+  updateMessageStatus(event.messageId, event.status); // delivered
+});
+```
+
+Payload:
+
+```json
+{
+  "roomId": 10,
+  "messageId": 501,
+  "status": "delivered",
+  "deliveredBy": { "userId": 4 },
+  "deliveredAt": "2026-10-21T10:01:00.000Z"
+}
+```
+
+Send acknowledgement में भी updated message मिलता है:
+
+```js
+socket.emit('chat:send_message', payload, ({ success, data }) => {
+  if (success) renderMessage(data.id, data.chat_message_status);
+});
+```
+
+## 5. `chat:typing_start` — typing शुरू
 
 ```js
 socket.emit('chat:typing_start', { roomId: 10 });
@@ -166,7 +206,7 @@ socket.emit('chat:typing_start', { roomId: 10 });
 
 यह event sender को वापस नहीं मिलता; room के बाकी authorized clients को मिलता है।
 
-## 5. `chat:typing_stop` — typing बंद
+## 6. `chat:typing_stop` — typing बंद
 
 ```js
 socket.emit('chat:typing_stop', { roomId: 10 });
@@ -182,7 +222,7 @@ socket.emit('chat:typing_stop', { roomId: 10 });
 }
 ```
 
-## 6. `chat:get_room_history` — पुराने messages
+## 7. `chat:get_room_history` — पुराने messages
 
 ```js
 socket.emit('chat:get_room_history', {
@@ -195,7 +235,7 @@ socket.emit('chat:get_room_history', {
 
 एक page में default 50 messages मिलते हैं। Owner को सभी threads की history और participant को अपनी thread की history मिलेगी।
 
-## 7. `chat:mark_read` — messages read करना
+## 8. `chat:mark_read` — messages read करना
 
 जब chat screen खुल जाए या messages दिखाई दे जाएँ:
 
@@ -212,11 +252,18 @@ socket.emit('chat:mark_read', { roomId: 10 }, (response) => {
   "roomId": 10,
   "messageIds": [501, 502],
   "readBy": { "userId": 4 },
+  "status": "read",
   "readAt": "2026-10-21T10:05:00.000Z"
 }
 ```
 
-## 8. `chat:leave_room` — room छोड़ना
+```js
+socket.on('chat:message_read', ({ messageIds, status }) => {
+  messageIds.forEach((id) => updateMessageStatus(id, status)); // read
+});
+```
+
+## 9. `chat:leave_room` — room छोड़ना
 
 ```js
 socket.emit('chat:leave_room', { roomId: 10 }, (response) => {
@@ -226,7 +273,7 @@ socket.emit('chat:leave_room', { roomId: 10 }, (response) => {
 
 यह केवल current socket को Socket.IO room से remove करता है। Database participant record delete नहीं होता, इसलिए user बाद में फिर join कर सकता है।
 
-## 9. `chat:get_order_rooms` — booking room लेना
+## 10. `chat:get_order_rooms` — booking room लेना
 
 नए flow में इसे `bookingId` के साथ call करें:
 

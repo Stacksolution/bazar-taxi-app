@@ -1,9 +1,13 @@
 'use strict';
 
 const UserService      = require('../../services/UserService');
+const ChatService      = require('../../services/ChatService');
+const { SOCKET_EVENTS } = require('../events/eventNames');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { success }      = require('../../utils/response');
 const logger           = require('../../utils/logger');
+
+const CHAT_EVENTS = SOCKET_EVENTS.CHAT;
 
 /**
  * Presence Handler
@@ -38,6 +42,20 @@ function registerPresenceHandlers(socket, io) {
 
       // Join role room — emit to all drivers/customers via: io.to('driver')
       socket.join(userType || 'customer');
+
+      // A user may have received messages while offline. Mark them delivered
+      // on first reconnect and replay them through the personal socket room.
+      const pendingMessages = await ChatService.markPendingDeliveredForUser(userId);
+      for (const message of pendingMessages) {
+        io.to(`user:${userId}`).emit(CHAT_EVENTS.NEW_MESSAGE, success(message, 'New message'));
+        io.to(`user:${message.chat_sender_id}`).emit(CHAT_EVENTS.MESSAGE_DELIVERED, {
+          roomId: message.chat_room_id,
+          messageId: message.id,
+          status: message.chat_message_status,
+          deliveredBy: { userId },
+          deliveredAt: message.chat_delivered_at,
+        });
+      }
 
       // Broadcast to ALL connected clients
       io.emit('presence:user_online', {

@@ -36,7 +36,7 @@ const SOCKET_EVENTS = Object.freeze({
     NEW_MESSAGE       : 'chat:new_message',        // new message object
     USER_TYPING       : 'chat:user_typing',        // { roomId, userId, isTyping }
     MESSAGE_READ      : 'chat:message_read',       // { roomId, messageIds, readBy, readAt }
-    MESSAGE_DELIVERED : 'chat:message_delivered',  // { messageId, deliveredAt }
+    MESSAGE_DELIVERED : 'chat:message_delivered',  // { roomId, messageId, status, deliveredBy, deliveredAt }
     ORDER_ROOMS_LIST  : 'chat:order_rooms_list',   // customer's room list for an order
   }),
 

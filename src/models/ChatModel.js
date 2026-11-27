@@ -122,12 +122,61 @@ const ChatModel = {
     return ids;
   },
 
-  markDelivered(messageId) {
-    return query(
+  async markDelivered({ messageId, userId }) {
+    const result = await query(
       `UPDATE socket_chat_messages
        SET chat_message_status = 'delivered', chat_delivered_at = UTC_TIMESTAMP()
-       WHERE id = ? AND chat_message_status = 'sent'`,
-      [messageId]
+       WHERE id = ? AND chat_conversation_user_id = ? AND chat_message_status = 'sent'`,
+      [messageId, userId]
+    );
+
+    if (result.affectedRows) {
+      await query(
+        `INSERT INTO socket_message_receipts
+           (receipt_message_id, receipt_user_id, receipt_status)
+         VALUES (?, ?, 'delivered')
+         ON DUPLICATE KEY UPDATE
+           receipt_status = IF(receipt_status = 'read', 'read', 'delivered'),
+           updated_at = UTC_TIMESTAMP()`,
+        [messageId, userId]
+      );
+    }
+
+    return queryOne('SELECT * FROM socket_chat_messages WHERE id = ?', [messageId]);
+  },
+
+  async markPendingDeliveredForUser(userId) {
+    const messages = await query(
+      `SELECT * FROM socket_chat_messages
+       WHERE chat_conversation_user_id = ? AND chat_message_status = 'sent'
+       ORDER BY id ASC`,
+      [userId]
+    );
+    if (!messages.length) return [];
+
+    await withTransaction(async (conn) => {
+      for (const message of messages) {
+        await conn.execute(
+          `UPDATE socket_chat_messages
+           SET chat_message_status = 'delivered', chat_delivered_at = UTC_TIMESTAMP()
+           WHERE id = ? AND chat_message_status = 'sent'`,
+          [message.id]
+        );
+        await conn.execute(
+          `INSERT INTO socket_message_receipts
+             (receipt_message_id, receipt_user_id, receipt_status)
+           VALUES (?, ?, 'delivered')
+           ON DUPLICATE KEY UPDATE
+             receipt_status = IF(receipt_status = 'read', 'read', 'delivered'),
+             updated_at = UTC_TIMESTAMP()`,
+          [message.id, userId]
+        );
+      }
+    });
+
+    return query(
+      `SELECT * FROM socket_chat_messages WHERE id IN (${messages.map(() => '?').join(',')})`,
+      messages.map((message) => message.id)
     );
   },
 };

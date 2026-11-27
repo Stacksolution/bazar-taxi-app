@@ -126,8 +126,15 @@ const ChatService = {
     return ChatModel.markRoomAsRead({ roomId: Number(roomId), userId: Number(userId) });
   },
 
-  markDelivered(messageId) {
-    return ChatModel.markDelivered(Number(messageId));
+  markDelivered({ messageId, userId }) {
+    return ChatModel.markDelivered({
+      messageId: Number(messageId),
+      userId: Number(userId),
+    });
+  },
+
+  markPendingDeliveredForUser(userId) {
+    return ChatModel.markPendingDeliveredForUser(Number(userId));
   },
 };
 
