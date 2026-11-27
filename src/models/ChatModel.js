@@ -77,15 +77,12 @@ const ChatModel = {
     return queryOne('SELECT * FROM socket_chat_messages WHERE id = ?', [result.insertId]);
   },
 
-  /** Owners see every thread; participants see only their owner thread. */
+  /** Return only messages where the authenticated user is sender or recipient. */
   getRoomMessages({ roomId, userId, limit = 50, offset = 0 }) {
     return query(
       `SELECT m.* FROM socket_chat_messages m
-       WHERE m.chat_room_id = ? AND
-        (EXISTS (
-          SELECT 1 FROM socket_chat_rooms r
-          WHERE r.id = m.chat_room_id AND r.room_owner_id = ?
-        ) OR m.chat_conversation_user_id = ?)
+       WHERE m.chat_room_id = ?
+         AND (m.chat_sender_id = ? OR m.chat_conversation_user_id = ?)
        ORDER BY m.created_at DESC LIMIT ? OFFSET ?`,
       [roomId, userId, userId, limit, offset]
     );
