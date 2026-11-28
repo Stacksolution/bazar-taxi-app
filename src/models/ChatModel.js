@@ -114,8 +114,8 @@ const ChatModel = {
           safeRoomId,
           safeUserId,
           safeReceiverId,
-          safeReceiverId,
           safeUserId,
+          safeReceiverId,
           safeLimit,
           safeOffset,
         ]
