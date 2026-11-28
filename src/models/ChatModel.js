@@ -78,13 +78,13 @@ const ChatModel = {
   },
 
   /** Return only messages where the authenticated user is sender or recipient. */
-  getRoomMessages({ roomId, userId, limit = 50, offset = 0 }) {
+  getRoomMessages({ roomId, userId,receiverId, limit = 50, offset = 0 }) {
     return query(
       `SELECT m.* FROM socket_chat_messages m
        WHERE m.chat_room_id = ?
          AND (m.chat_sender_id = ? OR m.chat_conversation_user_id = ?)
        ORDER BY m.created_at DESC LIMIT ? OFFSET ?`,
-      [roomId, userId, userId, limit, offset]
+      [roomId, userId, receiverId, limit, offset]
     );
   },
 

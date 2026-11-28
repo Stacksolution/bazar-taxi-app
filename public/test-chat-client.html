@@ -15,6 +15,13 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
     .message-list { scroll-behavior: smooth; }
     .pulse-dot { box-shadow: 0 0 0 5px rgba(34, 197, 94, .13); }
+    .field{margin-top:.35rem;width:100%;border-radius:.8rem;border:1px solid #e2e8f0;background:#fff;padding:.65rem .75rem;font-size:.8rem;color:#0f172a;outline:none}
+    .field:focus{border-color:#818cf8;box-shadow:0 0 0 3px #e0e7ff}
+    .btn-primary{border-radius:.8rem;background:#635bff;padding:.7rem 1rem;font-size:.8rem;font-weight:700;color:#fff;transition:.2s}
+    .btn-primary:hover{background:#5148e8}
+    .btn-primary:disabled,.btn-secondary:disabled{cursor:not-allowed;opacity:.45}
+    .btn-secondary{border-radius:.8rem;background:#f1f5f9;padding:.7rem 1rem;font-size:.8rem;font-weight:700;color:#334155;transition:.2s}
+    .btn-secondary:hover{background:#e2e8f0}
   </style>
 </head>
 <body class="min-h-screen bg-mist text-ink antialiased">
@@ -22,41 +29,107 @@
     <header class="mb-5 flex flex-col gap-4 rounded-3xl bg-ink px-5 py-5 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-7">
       <div class="flex items-center gap-3">
         <div class="grid h-11 w-11 place-items-center rounded-2xl bg-brand text-xl font-black">BT</div>
-        <div><p class="text-xs font-semibold uppercase tracking-[.22em] text-indigo-200">Developer tool</p><h1 class="text-2xl font-bold tracking-tight">Booking Chat Lab</h1></div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[.22em] text-indigo-200">Developer tool</p>
+          <h1 class="text-2xl font-bold tracking-tight">Booking Chat Lab</h1>
+        </div>
       </div>
-      <div class="flex items-center gap-3 text-sm"><span id="statusDot" class="h-2.5 w-2.5 rounded-full bg-slate-500"></span><span id="statusText">Disconnected</span><span id="socketId" class="rounded-full bg-white/10 px-3 py-1 font-mono text-xs text-slate-300">no socket</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="statusDot" class="h-2.5 w-2.5 rounded-full bg-slate-500"></span>
+        <span id="statusText">Disconnected</span>
+        <span id="socketId" class="rounded-full bg-white/10 px-3 py-1 font-mono text-xs text-slate-300">no socket</span>
+      </div>
     </header>
 
     <main class="grid gap-5 xl:grid-cols-[350px_minmax(0,1fr)_330px]">
       <aside class="space-y-5">
         <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <div class="mb-4 flex items-center justify-between"><h2 class="font-bold">Connection</h2><span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">SOCKET.IO</span></div>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="font-bold">Connection</h2>
+            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">SOCKET.IO</span>
+          </div>
           <div class="space-y-3">
             <label class="block text-xs font-semibold text-slate-500">Server URL<input id="serverUrl" class="field" value="" placeholder="http://localhost:4000" /></label>
-            <div class="grid grid-cols-2 gap-3"><label class="block text-xs font-semibold text-slate-500">User ID<input id="userId" class="field" type="number" value="4" /></label><label class="block text-xs font-semibold text-slate-500">Auth role<select id="userType" class="field"><option value="customer">customer</option><option value="driver">driver</option></select></label></div>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block text-xs font-semibold text-slate-500">User ID<input id="userId" class="field" type="number" value="4" /></label>
+              <label class="block text-xs font-semibold text-slate-500">Auth role<select id="userType" class="field"><option value="customer">customer</option><option value="driver">driver</option></select></label>
+            </div>
             <label class="block text-xs font-semibold text-slate-500">Booking ID<input id="bookingId" class="field" type="number" value="10" /></label>
             <p class="rounded-2xl bg-slate-50 p-3 text-xs leading-5 text-slate-500">Owner is resolved automatically from the connected User ID. Room join does not send owner ID or participant type.</p>
-            <div class="flex gap-2 pt-1"><button id="connectBtn" class="btn-primary flex-1">Connect</button><button id="disconnectBtn" class="btn-secondary flex-1" disabled>Disconnect</button></div>
+            <div class="flex gap-2 pt-1">
+              <button id="connectBtn" class="btn-primary flex-1">Connect</button>
+              <button id="disconnectBtn" class="btn-secondary flex-1" disabled>Disconnect</button>
+            </div>
           </div>
           <p class="mt-4 rounded-2xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Open this page in 3 tabs. Use owner ID 4 in one tab and participant IDs in the other tabs.</p>
         </section>
 
         <section class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <div class="mb-4 flex items-center justify-between"><h2 class="font-bold">Room</h2><span id="ownerBadge" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">NOT JOINED</span></div>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="font-bold">Room</h2>
+            <span id="ownerBadge" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">NOT JOINED</span>
+          </div>
           <button id="joinBtn" class="btn-primary w-full" disabled>Join booking room</button>
-          <div class="mt-4 space-y-2 text-xs"><div class="flex justify-between"><span class="text-slate-500">Room ID</span><b id="roomId">—</b></div><div class="flex justify-between"><span class="text-slate-500">Booking ID</span><b id="roomBooking">—</b></div><div class="flex justify-between"><span class="text-slate-500">Participants online/listed</span><b id="participantCount">—</b></div></div>
-          <div class="mt-5 border-t border-slate-100 pt-4"><div class="mb-2 flex items-center justify-between"><h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Participants</h3><button id="refreshParticipantsBtn" class="text-xs font-bold text-indigo-600 hover:text-indigo-800" disabled>Refresh</button></div><div id="participantList" class="space-y-2"><p class="text-xs text-slate-400">Join a room to load participants.</p></div></div>
+          <div class="mt-4 space-y-2 text-xs">
+            <div class="flex justify-between"><span class="text-slate-500">Room ID</span><b id="roomId">—</b></div>
+            <div class="flex justify-between"><span class="text-slate-500">Booking ID</span><b id="roomBooking">—</b></div>
+            <div class="flex justify-between"><span class="text-slate-500">Participants online/listed</span><b id="participantCount">—</b></div>
+          </div>
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <div class="mb-2 flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Participants</h3>
+              <button id="refreshParticipantsBtn" class="text-xs font-bold text-indigo-600 hover:text-indigo-800" disabled>Refresh</button>
+            </div>
+            <div id="participantList" class="space-y-2">
+              <p class="text-xs text-slate-400">Join a room to load participants.</p>
+            </div>
+          </div>
         </section>
       </aside>
 
       <section class="flex min-h-[700px] flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Active conversation</p><h2 class="mt-1 text-lg font-bold" id="conversationTitle">Join a room to start</h2></div><button id="markReadBtn" class="btn-secondary" disabled>Mark read</button></div>
-        <div id="messageList" class="message-list flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-5"><div id="emptyState" class="grid h-full place-items-center text-center text-sm text-slate-400"><div><div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white text-2xl shadow-sm">💬</div><p class="font-semibold text-slate-500">No messages yet</p><p class="mt-1">Connect and join a booking room.</p></div></div></div>
-        <div class="border-t border-slate-100 p-4"><div class="mb-3 flex items-center justify-between"><span id="typingText" class="text-xs font-medium text-brand"></span><label class="flex items-center gap-2 text-xs text-slate-500">Target user ID (owner only)<input id="targetId" class="field !w-28 !py-1.5" type="number" placeholder="e.g. 8" /></label></div><div class="flex gap-2"><input id="messageInput" class="field flex-1" placeholder="Write a message..." disabled /><button id="sendBtn" class="btn-primary px-6" disabled>Send</button></div></div>
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Active conversation</p>
+            <h2 class="mt-1 text-lg font-bold" id="conversationTitle">Join a room to start</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="loadHistoryBtn" class="btn-secondary" disabled>Reload history</button>
+            <button id="markReadBtn" class="btn-secondary" disabled>Mark read</button>
+          </div>
+        </div>
+        <div id="messageList" class="message-list flex-1 space-y-4 overflow-y-auto bg-slate-50/70 p-5">
+          <div id="emptyState" class="grid h-full place-items-center text-center text-sm text-slate-400">
+            <div>
+              <div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white text-2xl shadow-sm">💬</div>
+              <p class="font-semibold text-slate-500">No messages yet</p>
+              <p class="mt-1">Connect and join a booking room.</p>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <span id="typingText" class="text-xs font-medium text-brand"></span>
+            <label class="flex items-center gap-2 text-xs text-slate-500">
+              Target user ID (owner only)
+              <input id="targetId" class="field !w-28 !py-1.5" type="number" placeholder="e.g. 8" />
+            </label>
+          </div>
+          <div class="flex gap-2">
+            <input id="messageInput" class="field flex-1" placeholder="Write a message..." disabled />
+            <button id="sendBtn" class="btn-primary px-6" disabled>Send</button>
+          </div>
+        </div>
       </section>
 
       <aside class="flex min-h-[700px] flex-col rounded-3xl bg-slate-950 text-slate-200 shadow-sm">
-        <div class="flex items-center justify-between border-b border-white/10 px-5 py-4"><div><p class="text-xs font-semibold uppercase tracking-widest text-indigo-300">Live diagnostics</p><h2 class="mt-1 font-bold text-white">Event timeline</h2></div><button id="clearLogBtn" class="rounded-lg bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20">Clear</button></div>
+        <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-indigo-300">Live diagnostics</p>
+            <h2 class="mt-1 font-bold text-white">Event timeline</h2>
+          </div>
+          <button id="clearLogBtn" class="rounded-lg bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20">Clear</button>
+        </div>
         <div id="eventLog" class="flex-1 space-y-3 overflow-y-auto p-4 font-mono text-[11px]"></div>
         <div class="border-t border-white/10 p-4 text-xs leading-5 text-slate-400">Every ack and server event appears here. This is useful for copying exact payloads to the app developer.</div>
       </aside>
@@ -68,19 +141,249 @@
     const $ = (id) => document.getElementById(id);
     const state = { socket: null, room: null, isOwner: false, messages: [] };
     $('serverUrl').value = window.location.origin;
-    const style = document.createElement('style'); style.textContent = '.field{margin-top:.35rem;width:100%;border-radius:.8rem;border:1px solid #e2e8f0;background:#fff;padding:.65rem .75rem;font-size:.8rem;color:#0f172a;outline:none}.field:focus{border-color:#818cf8;box-shadow:0 0 0 3px #e0e7ff}.btn-primary{border-radius:.8rem;background:#635bff;padding:.7rem 1rem;font-size:.8rem;font-weight:700;color:#fff;transition:.2s}.btn-primary:hover{background:#5148e8}.btn-primary:disabled,.btn-secondary:disabled{cursor:not-allowed;opacity:.45}.btn-secondary{border-radius:.8rem;background:#f1f5f9;padding:.7rem 1rem;font-size:.8rem;font-weight:700;color:#334155;transition:.2s}.btn-secondary:hover{background:#e2e8f0}'; document.head.appendChild(style);
-    function log(event, payload, tone='normal') { const row=document.createElement('div'); row.className='rounded-xl border border-white/10 bg-white/[.04] p-3'; const color=tone==='error'?'text-rose-300':tone==='success'?'text-emerald-300':'text-indigo-300'; row.innerHTML=`<div class="mb-1 flex justify-between gap-2"><b class="${color}">${event}</b><span class="text-slate-500">${new Date().toLocaleTimeString()}</span></div><pre class="whitespace-pre-wrap break-all text-slate-400">${escapeHtml(JSON.stringify(payload,null,2))}</pre>`; $('eventLog').prepend(row); }
-    function escapeHtml(value) { return String(value).replace(/[&<>"']/g, (c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
-    function setStatus(connected, text) { $('statusText').textContent=text; $('statusDot').className=`h-2.5 w-2.5 rounded-full ${connected?'bg-emerald-400 pulse-dot':'bg-slate-500'}`; $('connectBtn').disabled=connected; $('disconnectBtn').disabled=!connected; $('joinBtn').disabled=!connected; if(!connected){$('socketId').textContent='no socket'; $('messageInput').disabled=true; $('sendBtn').disabled=true; $('markReadBtn').disabled=true;} }
-    function ackEvent(name, response) { log(name+' · ack', response, response && response.success?'success':'error'); if(!response || !response.success) alert(response?.message || 'Request failed'); }
-    function connect() { if(state.socket) state.socket.disconnect(); const socketUrl=$('serverUrl').value.trim()||window.location.origin; state.socket=io(socketUrl,{transports:['websocket'],reconnection:false,query:{user_id:String($('userId').value),user_type:$('userType').value,guest_id:'0'}}); log('socket:connecting',{url:socketUrl,userId:$('userId').value,userType:$('userType').value}); socketEvents(); }
-    function renderParticipants(participants=[]) { const list=$('participantList'); $('participantCount').textContent=participants.length; list.replaceChildren(); if(!participants.length){list.innerHTML='<p class="text-xs text-slate-400">No participants found.</p>';return;} participants.forEach((participant)=>{const row=document.createElement('div'); const current=Number(participant.userId)===Number($('userId').value); row.className='flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2'; row.innerHTML=`<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full ${current?'bg-indigo-500':'bg-emerald-500'}"></span><span class="text-xs font-semibold text-slate-700">User ${escapeHtml(participant.userId)}</span></div><span class="rounded-full ${participant.isOwner?'bg-indigo-100 text-indigo-700':'bg-slate-200 text-slate-600'} px-2 py-0.5 text-[10px] font-bold">${participant.isOwner?'OWNER':current?'YOU':'PARTICIPANT'}</span>`; list.appendChild(row);}); }
-    function refreshParticipants() { if(!state.room)return; const payload={roomId:state.room.id}; log('chat:get_participants →',payload); state.socket.emit('chat:get_participants',payload,(res)=>{ackEvent('chat:get_participants',res);if(res.success)renderParticipants(res.data)}); }
-    function socketEvents() { const s=state.socket; s.on('connect',()=>{ $('socketId').textContent=s.id; setStatus(true,'Connected'); log('connect',{socketId:s.id},'success'); }); s.on('connect_error',(e)=>{setStatus(false,'Connection error');log('connect_error',{message:e.message},'error')}); s.on('disconnect',(reason)=>{setStatus(false,'Disconnected');log('disconnect',{reason})}); s.on('chat:room_joined',(data)=>{log('chat:room_joined',data);}); s.on('chat:participants_list',(data)=>{log('chat:participants_list',data,'success');renderParticipants(data.participants)}); s.on('chat:new_message',(res)=>{log('chat:new_message',res,'success'); if(res.success) addMessage(res.data);}); s.on('chat:user_typing',(data)=>{log('chat:user_typing',data); $('typingText').textContent=data.isTyping?`User ${data.userId} is typing...`:'';}); s.on('chat:message_read',(data)=>log('chat:message_read',data)); }
-    function joinRoom() { const payload={bookingId:Number($('bookingId').value)}; log('chat:join_room →',payload); state.socket.emit('chat:join_room',payload,(res)=>{ackEvent('chat:join_room',res); if(!res.success)return; state.room=res.data.room;state.isOwner=res.data.isOwner; $('roomId').textContent=state.room.id;$('roomBooking').textContent=state.room.room_booking_id;$('ownerBadge').textContent=state.isOwner?'OWNER':'PARTICIPANT';$('ownerBadge').className=`rounded-full px-2.5 py-1 text-[11px] font-bold ${state.isOwner?'bg-indigo-100 text-indigo-700':'bg-emerald-100 text-emerald-700'}`;$('conversationTitle').textContent=`Booking #${state.room.room_booking_id} · Room #${state.room.id}`;$('messageInput').disabled=false;$('sendBtn').disabled=false;$('markReadBtn').disabled=false;$('refreshParticipantsBtn').disabled=false;renderParticipants(res.data.participants||[]); if(res.data.history?.length){res.data.history.forEach(addMessage)} }); }
-    function addMessage(message) { $('emptyState')?.remove(); if(state.messages.some((m)=>m.id===message.id))return; state.messages.push(message); const mine=Number(message.chat_sender_id)===Number($('userId').value); const wrapper=document.createElement('div'); wrapper.className=`flex ${mine?'justify-end':'justify-start'}`; wrapper.innerHTML=`<div class="max-w-[82%]"><div class="rounded-2xl ${mine?'rounded-br-md bg-brand text-white':'rounded-bl-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200'} px-4 py-3"><p class="whitespace-pre-wrap text-sm">${escapeHtml(message.chat_message||message.chat_attachment_url||'')}</p></div><div class="mt-1 text-[10px] text-slate-400 ${mine?'text-right':''}">User ${message.chat_sender_id} · ${new Date(message.created_at||Date.now()).toLocaleTimeString()}</div></div>`; $('messageList').appendChild(wrapper); $('messageList').scrollTop=$('messageList').scrollHeight; }
-    function sendMessage() { const text=$('messageInput').value.trim(); if(!text||!state.room)return; const payload={roomId:state.room.id,message:text,messageType:'text'}; if(state.isOwner){const target=Number($('targetId').value);if(!target)return alert('Owner के लिए target user ID डालें');payload.toUserId=target;} log('chat:send_message →',payload); state.socket.emit('chat:send_message',payload,(res)=>{ackEvent('chat:send_message',res);if(res.success)$('messageInput').value='';}); }
-    $('connectBtn').onclick=connect; $('disconnectBtn').onclick=()=>state.socket?.disconnect(); $('joinBtn').onclick=joinRoom; $('refreshParticipantsBtn').onclick=refreshParticipants; $('sendBtn').onclick=sendMessage; $('messageInput').onkeydown=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}; $('messageInput').oninput=()=>{if(state.room)state.socket.emit('chat:typing_start',{roomId:state.room.id})}; $('markReadBtn').onclick=()=>state.socket.emit('chat:mark_read',{roomId:state.room.id},(res)=>ackEvent('chat:mark_read',res)); $('clearLogBtn').onclick=()=>$('eventLog').replaceChildren();
+
+    function log(event, payload, tone = 'normal') {
+      const row = document.createElement('div');
+      row.className = 'rounded-xl border border-white/10 bg-white/[.04] p-3';
+      const color = tone === 'error' ? 'text-rose-300' : tone === 'success' ? 'text-emerald-300' : 'text-indigo-300';
+      row.innerHTML = `<div class="mb-1 flex justify-between gap-2"><b class="${color}">${event}</b><span class="text-slate-500">${new Date().toLocaleTimeString()}</span></div><pre class="whitespace-pre-wrap break-all text-slate-400">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+      $('eventLog').prepend(row);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+    }
+
+    function setStatus(connected, text) {
+      $('statusText').textContent = text;
+      $('statusDot').className = `h-2.5 w-2.5 rounded-full ${connected ? 'bg-emerald-400 pulse-dot' : 'bg-slate-500'}`;
+      $('connectBtn').disabled = connected;
+      $('disconnectBtn').disabled = !connected;
+      $('joinBtn').disabled = !connected;
+      if (!connected) {
+        $('socketId').textContent = 'no socket';
+        $('messageInput').disabled = true;
+        $('sendBtn').disabled = true;
+        $('markReadBtn').disabled = true;
+        $('loadHistoryBtn').disabled = true;
+        $('refreshParticipantsBtn').disabled = true;
+      }
+    }
+
+    function ackEvent(name, response) {
+      log(name + ' · ack', response, response && response.success ? 'success' : 'error');
+      if (!response || !response.success) alert(response?.message || 'Request failed');
+    }
+
+    function resetConversationState() {
+      state.messages = [];
+      $('messageList').innerHTML = `<div id="emptyState" class="grid h-full place-items-center text-center text-sm text-slate-400"><div><div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white text-2xl shadow-sm">💬</div><p class="font-semibold text-slate-500">No messages yet</p><p class="mt-1">Waiting for conversation history or new messages.</p></div></div>`;
+    }
+
+    function extractHistoryArray(rawHistory) {
+      if (!rawHistory) return [];
+      if (Array.isArray(rawHistory)) return rawHistory;
+      if (Array.isArray(rawHistory.data)) return rawHistory.data;
+      if (Array.isArray(rawHistory.messages)) return rawHistory.messages;
+      return [];
+    }
+
+    function renderHistoryList(rawHistory) {
+      const items = extractHistoryArray(rawHistory);
+      if (!items.length) return;
+
+      // Ensure chronological order (oldest first, newest at bottom)
+      const sorted = [...items].sort((a, b) => {
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
+
+      sorted.forEach((msg) => addMessage(msg, false));
+      $('messageList').scrollTop = $('messageList').scrollHeight;
+    }
+
+    function fetchRoomHistory(page = 1) {
+      if (!state.socket || !state.room) return;
+      const payload = { roomId: state.room.id, page };
+      log('chat:get_room_history →', payload);
+      state.socket.emit('chat:get_room_history', payload, (res) => {
+        log('chat:get_room_history · ack', res, res && res.success ? 'success' : 'error');
+        if (res?.success) {
+          renderHistoryList(res.data);
+        }
+      });
+    }
+
+    function connect() {
+      if (state.socket) state.socket.disconnect();
+      const socketUrl = $('serverUrl').value.trim() || window.location.origin;
+      state.socket = io(socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+        query: { user_id: String($('userId').value), user_type: $('userType').value, guest_id: '0' },
+      });
+      log('socket:connecting', { url: socketUrl, userId: $('userId').value, userType: $('userType').value });
+      socketEvents();
+    }
+
+    function renderParticipants(participants = []) {
+      const list = $('participantList');
+      $('participantCount').textContent = participants.length;
+      list.replaceChildren();
+      if (!participants.length) {
+        list.innerHTML = '<p class="text-xs text-slate-400">No participants found.</p>';
+        return;
+      }
+      participants.forEach((participant) => {
+        const row = document.createElement('div');
+        const current = Number(participant.userId) === Number($('userId').value);
+        row.className = 'flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2';
+        row.innerHTML = `<div class="flex items-center gap-2"><span class="h-2 w-2 rounded-full ${current ? 'bg-indigo-500' : 'bg-emerald-500'}"></span><span class="text-xs font-semibold text-slate-700">User ${escapeHtml(participant.userId)}</span></div><span class="rounded-full ${participant.isOwner ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'} px-2 py-0.5 text-[10px] font-bold">${participant.isOwner ? 'OWNER' : current ? 'YOU' : 'PARTICIPANT'}</span>`;
+        list.appendChild(row);
+      });
+    }
+
+    function refreshParticipants() {
+      if (!state.room) return;
+      const payload = { roomId: state.room.id };
+      log('chat:get_participants →', payload);
+      state.socket.emit('chat:get_participants', payload, (res) => {
+        ackEvent('chat:get_participants', res);
+        if (res.success) renderParticipants(res.data);
+      });
+    }
+
+    function socketEvents() {
+      const s = state.socket;
+      s.on('connect', () => {
+        $('socketId').textContent = s.id;
+        setStatus(true, 'Connected');
+        log('connect', { socketId: s.id }, 'success');
+      });
+      s.on('connect_error', (e) => {
+        setStatus(false, 'Connection error');
+        log('connect_error', { message: e.message }, 'error');
+      });
+      s.on('disconnect', (reason) => {
+        setStatus(false, 'Disconnected');
+        log('disconnect', { reason });
+      });
+      s.on('chat:room_joined', (data) => {
+        log('chat:room_joined', data);
+      });
+      s.on('chat:participants_list', (data) => {
+        log('chat:participants_list', data, 'success');
+        renderParticipants(data.participants);
+      });
+      s.on('chat:get_room_history', (res) => {
+        log('chat:get_room_history', res, res?.success ? 'success' : 'normal');
+        if (res?.success) {
+          renderHistoryList(res.data);
+        } else if (res) {
+          renderHistoryList(res);
+        }
+      });
+      s.on('chat:new_message', (res) => {
+        log('chat:new_message', res, 'success');
+        if (res?.success) addMessage(res.data);
+      });
+      s.on('chat:user_typing', (data) => {
+        log('chat:user_typing', data);
+        $('typingText').textContent = data.isTyping ? `User ${data.userId} is typing...` : '';
+      });
+      s.on('chat:message_read', (data) => log('chat:message_read', data));
+    }
+
+    function joinRoom() {
+      const payload = { bookingId: Number($('bookingId').value) };
+      resetConversationState();
+      log('chat:join_room →', payload);
+
+      state.socket.emit('chat:join_room', payload, (res) => {
+        ackEvent('chat:join_room', res);
+        if (!res || !res.success) return;
+
+        state.room = res.data.room;
+        state.isOwner = Boolean(res.data.isOwner);
+        $('roomId').textContent = state.room.id;
+        $('roomBooking').textContent = state.room.room_booking_id;
+        $('ownerBadge').textContent = state.isOwner ? 'OWNER' : 'PARTICIPANT';
+        $('ownerBadge').className = `rounded-full px-2.5 py-1 text-[11px] font-bold ${state.isOwner ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`;
+        $('conversationTitle').textContent = `Booking #${state.room.room_booking_id} · Room #${state.room.id}`;
+        $('messageInput').disabled = false;
+        $('sendBtn').disabled = false;
+        $('markReadBtn').disabled = false;
+        $('loadHistoryBtn').disabled = false;
+        $('refreshParticipantsBtn').disabled = false;
+
+        renderParticipants(res.data.participants || []);
+
+        const historyItems = extractHistoryArray(res.data.history);
+        if (historyItems.length) {
+          renderHistoryList(historyItems);
+        } else {
+          // Fallback if server emits history via chat:get_room_history or expects separate fetch
+          fetchRoomHistory(1);
+        }
+      });
+    }
+
+    function addMessage(message, smoothScroll = true) {
+      if (!message) return;
+      $('emptyState')?.remove();
+      if (message.id && state.messages.some((m) => String(m.id) === String(message.id))) return;
+      state.messages.push(message);
+
+      const mine = Number(message.chat_sender_id) === Number($('userId').value);
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
+      wrapper.innerHTML = `<div class="max-w-[82%]"><div class="rounded-2xl ${mine ? 'rounded-br-md bg-brand text-white' : 'rounded-bl-md bg-white text-slate-700 shadow-sm ring-1 ring-slate-200'} px-4 py-3"><p class="whitespace-pre-wrap text-sm">${escapeHtml(message.chat_message || message.chat_attachment_url || '')}</p></div><div class="mt-1 text-[10px] text-slate-400 ${mine ? 'text-right' : ''}">User ${escapeHtml(message.chat_sender_id)} · ${new Date(message.created_at || Date.now()).toLocaleTimeString()}</div></div>`;
+
+      const list = $('messageList');
+      list.appendChild(wrapper);
+      if (smoothScroll) {
+        list.scrollTop = list.scrollHeight;
+      }
+    }
+
+    function sendMessage() {
+      const text = $('messageInput').value.trim();
+      if (!text || !state.room) return;
+      const payload = { roomId: state.room.id, message: text, messageType: 'text' };
+      if (state.isOwner) {
+        const target = Number($('targetId').value);
+        if (!target) return alert('Owner के लिए target user ID डालें');
+        payload.toUserId = target;
+      }
+      log('chat:send_message →', payload);
+      state.socket.emit('chat:send_message', payload, (res) => {
+        ackEvent('chat:send_message', res);
+        if (res?.success) {
+          if (res.data) addMessage(res.data);
+          $('messageInput').value = '';
+        }
+      });
+    }
+
+    $('connectBtn').onclick = connect;
+    $('disconnectBtn').onclick = () => state.socket?.disconnect();
+    $('joinBtn').onclick = joinRoom;
+    $('loadHistoryBtn').onclick = () => fetchRoomHistory(1);
+    $('refreshParticipantsBtn').onclick = refreshParticipants;
+    $('sendBtn').onclick = sendMessage;
+    $('messageInput').onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    };
+    $('messageInput').oninput = () => {
+      if (state.room) state.socket.emit('chat:typing_start', { roomId: state.room.id });
+    };
+    $('markReadBtn').onclick = () => state.socket.emit('chat:mark_read', { roomId: state.room.id }, (res) => ackEvent('chat:mark_read', res));
+    $('clearLogBtn').onclick = () => $('eventLog').replaceChildren();
   </script>
 </body>
 </html>

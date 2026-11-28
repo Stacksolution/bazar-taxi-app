@@ -112,10 +112,11 @@ const ChatService = {
   },
 
   /** Return history visible to the authenticated user ID. */
-  async getRoomHistory({ roomId, userId, page = 1, perPage = 50 }) {
+  async getRoomHistory({ roomId, userId, receiverId,  page = 1, perPage = 50 }) {
     const rows = await ChatModel.getRoomMessages({
       roomId: Number(roomId),
       userId: Number(userId),
+      receiverId:Number(receiverId),
       limit: Number(perPage),
       offset: (Number(page) - 1) * Number(perPage),
     });

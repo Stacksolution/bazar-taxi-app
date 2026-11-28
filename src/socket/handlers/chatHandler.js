@@ -119,10 +119,10 @@ function registerChatHandlers(socket, io) {
       socket.join(ioRoom(result.room.id));
 
       // Fetch room message history and participant list
-      const history = await ChatService.getRoomHistory({
-        roomId: result.room.id,
-        userId,
-      });
+      // const history = await ChatService.getRoomHistory({
+      //   roomId: result.room.id,
+      //   userId,
+      // });
       const participants = await ChatService.getParticipants({
         roomId: result.room.id,
         userId,
@@ -142,9 +142,9 @@ function registerChatHandlers(socket, io) {
         participants: participantsWithSocketDetails,
       });
 
+
       ack(callback, success({
         room: result.room,
-        history,
         participants: participantsWithSocketDetails,
         isOwner: result.isOwner,
       }, 'Room joined'));
@@ -244,12 +244,16 @@ function registerChatHandlers(socket, io) {
   socket.on(EV.GET_ROOM_HISTORY, async (data = {}, callback) => {
     try {
       await ChatService.assertRoomAccess({ roomId: data.roomId, userId });
+
+      var senderId  = userId;
+      var receiverId = data.userId;
+
       const history = await ChatService.getRoomHistory({
         roomId: data.roomId,
-        userId,
+        senderId,
+        receiverId,
         page: Number(data.page || 1),
       });
-
       ack(callback, success(history, 'History fetched'));
     } catch (err) {
       ack(callback, failure(err.message));
