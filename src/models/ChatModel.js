@@ -106,7 +106,7 @@ const ChatModel = {
            AND (
              (m.chat_sender_id = ? AND m.chat_conversation_user_id = ?)
              OR
-             (m.chat_sender_id = ? AND m.chat_conversation_user_id = ?)
+             (m.chat_conversation_user_id = ? AND m.chat_sender_id = ?)
            )
          ORDER BY m.created_at DESC, m.id DESC
          LIMIT ? OFFSET ?`,
