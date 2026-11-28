@@ -78,13 +78,71 @@ const ChatModel = {
   },
 
   /** Return only messages where the authenticated user is sender or recipient. */
-  getRoomMessages({ roomId, userId,receiverId, limit = 50, offset = 0 }) {
+  async getRoomMessages({ roomId, userId, receiverId, limit = 50, offset = 0 }) {
+    const safeRoomId = Number(roomId);
+    const safeUserId = Number(userId);
+    const safeReceiverId = receiverId ? Number(receiverId) : null;
+    const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const safeOffset = Math.max(Number(offset) || 0, 0);
+
+    // Agar receiverId bhi diya hai to sirf (userId <-> receiverId) ke beech ke messages aayenge
+    if (safeReceiverId) {
+      return query(
+        `SELECT
+           m.id,
+           m.chat_room_id,
+           m.chat_sender_id,
+           m.chat_conversation_user_id,
+           m.chat_message,
+           m.chat_message_type,
+           m.chat_attachment_url,
+           m.chat_message_status,
+           m.chat_delivered_at,
+           m.chat_read_at,
+           m.created_at,
+           m.updated_at
+         FROM socket_chat_messages m
+         WHERE m.chat_room_id = ?
+           AND (
+             (m.chat_sender_id = ? AND m.chat_conversation_user_id = ?)
+             OR
+             (m.chat_sender_id = ? AND m.chat_conversation_user_id = ?)
+           )
+         ORDER BY m.created_at DESC, m.id DESC
+         LIMIT ? OFFSET ?`,
+        [
+          safeRoomId,
+          safeUserId,
+          safeReceiverId,
+          safeReceiverId,
+          safeUserId,
+          safeLimit,
+          safeOffset,
+        ]
+      );
+    }
+
+    // Agar receiverId nahi diya (jaise room owner ka full room view) to userId se jude saare messages
     return query(
-      `SELECT m.* FROM socket_chat_messages m
+      `SELECT
+         m.id,
+         m.chat_room_id,
+         m.chat_sender_id,
+         m.chat_conversation_user_id,
+         m.chat_message,
+         m.chat_message_type,
+         m.chat_attachment_url,
+         m.chat_message_status,
+         m.chat_delivered_at,
+         m.chat_read_at,
+         m.created_at,
+         m.updated_at
+       FROM socket_chat_messages m
        WHERE m.chat_room_id = ?
          AND (m.chat_sender_id = ? OR m.chat_conversation_user_id = ?)
-       ORDER BY m.created_at DESC LIMIT ? OFFSET ?`,
-      [roomId, userId, receiverId, limit, offset]
+       ORDER BY m.created_at DESC, m.id DESC
+       LIMIT ? OFFSET ?`,
+      [safeRoomId, safeUserId, safeUserId, safeLimit, safeOffset]
     );
   },
 
