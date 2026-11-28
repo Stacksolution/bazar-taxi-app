@@ -142,7 +142,7 @@ function registerChatHandlers(socket, io) {
         participants: participantsWithSocketDetails,
       });
 
-
+      logger.socket(`🟢 User (${userId}) connected → with room ${data.roomId}`);
       ack(callback, success({
         room: result.room,
         participants: participantsWithSocketDetails,
@@ -245,12 +245,11 @@ function registerChatHandlers(socket, io) {
     try {
       await ChatService.assertRoomAccess({ roomId: data.roomId, userId });
 
-      var senderId  = userId;
       var receiverId = data.userId;
-
+      logger.socket(`🟢 Sender (${userId}) →  Receiver ${receiverId}`);
       const history = await ChatService.getRoomHistory({
         roomId: data.roomId,
-        senderId,
+        userId,
         receiverId,
         page: Number(data.page || 1),
       });
